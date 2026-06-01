@@ -11,25 +11,25 @@
   ║  Embedded via iframe in Moodle                               ║
   ║                                                              ║
   ║  HOW IT WORKS                                                ║
-  ║  1. Poll options appear instantly (no wait)                  ║
+  ║  1.  options appear instantly (no wait)                  ║
   ║  2. User ID is received from Moodle via postMessage          ║
   ║     (requires footer script on Moodle — see README)         ║
   ║  3. Vote status checked in background                        ║
   ║  4. On submit: results shown instantly (optimistic UI),      ║
   ║     then confirmed silently with Google Apps Script          ║
   ║                                                              ║
-  ║  TO CREATE A NEW POLL                                        ║
-  ║  1. Edit POLL.question and POLL.options below                ║
+  ║  TO CREATE A NEW                                         ║
+  ║  1. Edit .question and .options below                ║
   ║  2. Update OPTIONS array in Apps Script to match exactly     ║
-  ║  3. Create a new intake tab via Poll Admin menu in Sheet     ║
+  ║  3. Create a new intake tab via  Admin menu in Sheet     ║
   ║  4. Update Moodle iframe src: ?intake=YourIntakeName         ║
   ║                                                              ║
   ║  MOODLE IFRAME (update intake name per cohort only):         ║
   ║  <iframe                                                     ║
-  ║    src="https://rene849.github.io/poll-test/?intake=Jun2026" ║
+  ║    src="https://rene849.github.io/-test/?intake=Jun2026" ║
   ║    style="width:100%;max-width:640px;height:490px;           ║
   ║           border:none;display:block;margin:0 auto;"          ║
-  ║    title="Poll" allowfullscreen>                             ║
+  ║    title="" allowfullscreen>                             ║
   ║  </iframe>                                                   ║
   ║                                                              ║
   ║  HEIGHT GUIDE (adjust iframe height to match):               ║
@@ -42,7 +42,7 @@
 
 <style>
   /* ── Design tokens ─────────────────────────────────────────────
-     Change these variables to restyle the entire poll.
+     Change these variables to restyle the entire .
      --brand      : bar fill colour and button background
      --bar-bg     : empty bar track background
      --text       : primary text colour
@@ -62,11 +62,11 @@
   html, body { font-family: var(--font); background: transparent; color: var(--text); }
   body { padding: 16px; }
 
-  /* ── Poll card ─────────────────────────────────────────────────
+  /* ──  card ─────────────────────────────────────────────────
      Outer wrapper. min-height prevents the card collapsing while
      the skeleton loads. Keep in sync with iframe height guide above.
      ──────────────────────────────────────────────────────────── */
-  .poll {
+  . {
     width: 100%;
     max-width: 600px;
     margin: 0 auto;
@@ -78,10 +78,15 @@
     min-height: 360px;
     display: flex;
     flex-direction: column;
+
+    /* 🔄 THE DYNAMIC HEIGHT FIXES */
+  min-height: 320px;  /* Base baseline size for a standard 2-option layout */
+  height: auto;       /* Card grows completely naturally based on content size */
+}
   }
 
   /* ── Question text ─────────────────────────────────────────── */
-  .poll-question {
+  .-question {
     font-size: 18px;
     font-weight: 600;
     color: var(--text);
@@ -629,28 +634,40 @@ const POLL = {
 
 })();
 </script><script>
-    function sendHeight() {
+function sendHeight() {
+  // Read the outer container's bounding rect for absolute precision
+  const height = document.documentElement.offsetHeight || document.body.scrollHeight;
+  
   window.parent.postMessage({
     type: 'iframe-height',
-    height: document.body.scrollHeight
+    height: height
   }, '*');
 }
 
-// Send immediately and keep retrying for 3 seconds
+// Debounce function prevents desynchronization feedback loops with Moodle
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+const smoothSendHeight = debounce(sendHeight, 100);
+
+// Unified baseline communication events
 window.addEventListener('load', sendHeight);
-window.addEventListener('resize', sendHeight);
+window.addEventListener('resize', smoothSendHeight);
 
-// Retry every 500ms for 3 seconds to catch late listeners
-var retryCount = 0;
-var retryInterval = setInterval(function() {
-  sendHeight();
-  retryCount++;
-  if (retryCount >= 6) clearInterval(retryInterval);
-}, 500);
-
-var observer = new ResizeObserver(sendHeight);
-observer.observe(document.body);
-    </script>
+// Observe DOM layout adjustments smoothly without infinite loops
+if (window.ResizeObserver) {
+  const observer = new ResizeObserver((entries) => {
+    // Only fire if the height actually changed to filter out noise
+    smoothSendHeight();
+  });
+  observer.observe(document.body);
+}
+</script>
   </body>
 </html>
 
