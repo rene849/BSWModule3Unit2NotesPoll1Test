@@ -635,16 +635,20 @@ const POLL = {
 })();
 </script><script>
 function sendHeight() {
-  // Read the outer container's bounding rect for absolute precision
-  const height = document.documentElement.offsetHeight || document.body.scrollHeight;
+  // Automatically gets the unique repo name (e.g., 'BSWModule3Unit2NotesPoll1Test')
+  const pathSegments = window.location.pathname.split('/').filter(Boolean);
+  const pollId = pathSegments[0] || 'default-poll';
+  
+  const currentHeight = document.documentElement.offsetHeight || document.body.scrollHeight;
   
   window.parent.postMessage({
     type: 'iframe-height',
-    height: height
+    pollId: pollId, // 👈 CRITICAL: Tells Moodle exactly which poll this height belongs to
+    height: currentHeight
   }, '*');
 }
 
-// Debounce function prevents desynchronization feedback loops with Moodle
+// Debounce stabilizes resizing layout calculations
 function debounce(func, wait) {
   let timeout;
   return function(...args) {
@@ -655,14 +659,11 @@ function debounce(func, wait) {
 
 const smoothSendHeight = debounce(sendHeight, 100);
 
-// Unified baseline communication events
 window.addEventListener('load', sendHeight);
 window.addEventListener('resize', smoothSendHeight);
 
-// Observe DOM layout adjustments smoothly without infinite loops
 if (window.ResizeObserver) {
-  const observer = new ResizeObserver((entries) => {
-    // Only fire if the height actually changed to filter out noise
+  const observer = new ResizeObserver(() => {
     smoothSendHeight();
   });
   observer.observe(document.body);
