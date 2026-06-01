@@ -493,12 +493,15 @@ function sendHeight() {
   const pathSegments = window.location.pathname.split('/').filter(Boolean);
   const pollId = pathSegments[0] || 'default-poll';
   
-  // Measure the clean inner height boundaries precisely
+  // 🛡️ ROBUST MULTI-POLL FIX: Grab the unique cohort parameter from the current URL
+  const intakeId = new URLSearchParams(window.location.search).get("intake") || 'no-intake';
+  
   const currentHeight = document.documentElement.offsetHeight || document.body.scrollHeight;
   
   window.parent.postMessage({
     type: 'iframe-height',
     pollId: pollId,
+    intakeId: intakeId, // 👈 Handed off directly to Moodle below
     height: currentHeight
   }, '*');
 }
